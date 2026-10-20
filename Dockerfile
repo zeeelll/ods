@@ -6,8 +6,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Run as an unprivileged user.
-RUN useradd -m -u 1000 user
+# Run as an unprivileged user. The app directory is created (and owned) up front because the legacy
+# Docker builder (Ubuntu's docker.io) otherwise creates WORKDIR as root, and the installs below fail.
+RUN useradd -m -u 1000 user \
+    && mkdir -p /home/user/app \
+    && chown user:user /home/user/app
 USER user
 ENV PATH=/home/user/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
