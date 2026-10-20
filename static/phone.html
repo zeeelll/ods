@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f6fa">
+<title>ODS Phone Camera</title>
+<script>
+  try { const t = localStorage.getItem('ods.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#f4f6fa; --panel:#ffffff; --panel-2:#f7f9fc; --line:#e1e6ef; --line-2:#cfd7e4;
+    --ink:#0f172a; --text:#1f2a3d; --muted:#64748b; --soft:#e6edf6; --badge:#dbe6f2; --badge-ink:#1e3a5f;
+    --primary:#0f172a; --on-primary:#ffffff; --ok:#16a34a; --warn:#b45309; --bad:#dc2626;
+    --shadow:0 1px 2px #0f172a0d, 0 8px 28px -14px #0f172a26;
+    --serif:var(--sans);
+    --sans:Inter,"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    --mono:var(--sans);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:#0a0a0b; --side:#0e0e10; --panel:#131316; --panel-2:#0f0f11; --line:#232327; --line-2:#34343b;
+    --ink:#f5f5f6; --text:#d6d6db; --muted:#8f8f99; --soft:#1c1c20; --badge:#1f1f24; --badge-ink:#d6d6db;
+    --primary:#f5f5f6; --on-primary:#0a0a0b; --ok:#22c55e; --warn:#fbbf24; --bad:#f87171;
+    --shadow:0 1px 2px #0008, 0 10px 30px -14px #000;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  [hidden] { display:none !important; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:15px/1.5 var(--sans); -webkit-font-smoothing:antialiased; }
+  button, input { font:inherit; color:inherit; }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .eyebrow { font:600 11px/1 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  svg.i { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+
+  .shell { min-height:100vh; display:grid; grid-template-columns:minmax(0,1fr); }
+  @media (min-width:920px) { .shell { grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); } }
+  .left { padding:max(18px, env(safe-area-inset-top)) clamp(18px,5vw,56px) max(30px, env(safe-area-inset-bottom)); display:flex; flex-direction:column; }
+  .right { display:none; background:var(--panel); border-left:1px solid var(--line); padding:44px clamp(28px,5vw,64px); }
+  @media (min-width:920px) { .right { display:block; } }
+
+  .top { display:flex; align-items:center; justify-content:space-between; }
+  .brand { display:flex; align-items:center; gap:10px; font:700 19px var(--sans); color:var(--ink); letter-spacing:.02em; }
+  .round { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; cursor:pointer; background:var(--panel); border:1px solid var(--line); color:var(--ink); }
+  .content { width:100%; max-width:440px; margin:0 auto; padding-top:clamp(30px,8vh,90px); display:grid; gap:20px; align-content:start; }
+  h1 { margin:8px 0 0; font:600 clamp(30px,7.4vw,40px)/1.1 var(--sans); letter-spacing:-.025em; color:var(--ink); }
+  .lede { margin:0; color:var(--muted); font-size:16px; }
+
+  #msg { padding:12px 14px; border-radius:14px; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn); color:var(--ink); animation:slide .3s ease-out; }
+  @keyframes slide { from { transform:translateY(-6px); opacity:0 } to { transform:none; opacity:1 } }
+
+  .seg { display:grid; grid-template-columns:1fr 1fr; padding:4px; border-radius:99px; background:var(--panel); border:1px solid var(--line); }
+  .seg button { border:0; padding:11px; border-radius:99px; cursor:pointer; background:none; font-weight:600; font-size:14px; color:var(--text); transition:.2s; }
+  .seg button.on { background:var(--primary); color:var(--on-primary); }
+
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #scan { font-size:13px; color:var(--muted); display:inline-flex; align-items:center; gap:8px; }
+  #scan::before { content:""; width:9px; height:9px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 3px #22c55e33, 0 0 10px #22c55eaa; animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent)} 70%{box-shadow:0 0 0 7px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+
+  ul { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  li { animation:slide .3s ease-out both; }
+  li button { width:100%; display:flex; align-items:center; gap:14px; text-align:left; padding:14px; border-radius:16px; cursor:pointer;
+              background:var(--panel); border:1px solid var(--line); transition:.15s; }
+  li button:not(:disabled):hover { border-color:var(--line-2); box-shadow:var(--shadow); }
+  li button:not(:disabled):active { transform:scale(.985); }
+  li button:disabled { opacity:.55; cursor:not-allowed; }
+  .pc { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--badge); color:var(--badge-ink); }
+  .grow { flex:1; min-width:0; } .grow b { display:block; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tag { font-size:12.5px; color:var(--muted); }
+  .go { color:var(--muted); }
+  #empty { padding:18px; border-radius:16px; border:1px dashed var(--line-2); color:var(--muted); font-size:14px; text-align:center; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:13px 20px; border-radius:14px; cursor:pointer; font-weight:600;
+         background:var(--panel); border:1px solid var(--line); color:var(--ink); transition:.15s; }
+  .btn:active { transform:scale(.98); }
+  .btn.primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+  .btn.danger { background:var(--bad); color:#fff; border-color:var(--bad); }
+  .btn.wide { width:100%; }
+  input[type=text], input[inputmode] { width:100%; padding:13px 14px; border-radius:14px; background:var(--panel); border:1px solid var(--line); outline:none; color:var(--ink); }
+  input:focus { border-color:var(--ink); box-shadow:0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent); }
+  #code { letter-spacing:.5em; text-align:center; font:700 24px var(--sans); font-variant-numeric:tabular-nums; padding-left:calc(14px + .5em); }
+  label.field { display:grid; gap:8px; }
+  .divider { display:flex; align-items:center; gap:12px; }
+  .divider::before, .divider::after { content:""; flex:1; height:1px; background:var(--line); }
+  .alt { text-align:center; font-size:14px; color:var(--muted); }
+  .alt a { color:var(--ink); font-weight:600; }
+
+  .wait { text-align:center; display:grid; justify-items:center; gap:16px; padding:34px 18px; background:var(--panel); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); }
+  /* Waiting loader: requests travel from this phone to the computer, which keeps "listening".
+     Tap it to fire a burst; it also leans towards your finger/pointer. */
+  .link { --rx:0deg; --ry:0deg; position:relative; display:flex; align-items:center; width:min(250px,100%); padding:14px 0; border:0; background:none; cursor:pointer;
+          touch-action:manipulation; transform:perspective(520px) rotateX(var(--ry)) rotateY(var(--rx)); transition:transform .5s cubic-bezier(.22,1,.36,1); }
+  .link:focus-visible { outline:2px solid var(--ink); outline-offset:6px; border-radius:18px; }
+  .node { position:relative; z-index:1; display:grid; place-items:center; width:58px; height:58px; flex:none; border-radius:17px; background:var(--panel-2); border:1px solid var(--line-2); color:var(--ink);
+          transition:transform .35s cubic-bezier(.34,1.56,.64,1); }
+  .node .i { width:25px; height:25px; }
+  .node.me { animation:bob 2.6s ease-in-out infinite; }
+  .node.pc .i { animation:receive .6s ease-in-out infinite; }
+  .radar { position:absolute; inset:-1px; border-radius:17px; border:1.5px solid var(--ink); opacity:0; animation:radar 2.4s cubic-bezier(.22,1,.36,1) infinite; pointer-events:none; }
+  .radar + .radar { animation-delay:1.2s; }
+  .wire { position:relative; flex:1; height:2px; background:repeating-linear-gradient(90deg,var(--line-2) 0 6px,transparent 6px 12px); animation:dash .9s linear infinite; }
+  .wire i { position:absolute; top:50%; left:0; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; background:var(--ink); opacity:0;
+            box-shadow:0 0 12px color-mix(in srgb,var(--ink) 55%,transparent); animation:packet 1.8s cubic-bezier(.45,0,.55,1) infinite; }
+  .wire i:nth-child(2) { animation-delay:.6s; } .wire i:nth-child(3) { animation-delay:1.2s; }
+  .wire i.burst { animation:packet .7s cubic-bezier(.3,0,.3,1) forwards; }
+  .link:active .node.me { transform:scale(.92); }
+  .link.hit .node.pc { transform:scale(1.1); }
+  .tap { position:absolute; left:29px; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:var(--ink); opacity:.18; pointer-events:none; animation:tap .6s ease-out forwards; }
+  .elapsed { display:inline-flex; align-items:center; gap:7px; padding:4px 11px; border-radius:99px; background:var(--panel-2); border:1px solid var(--line); color:var(--muted); font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .elapsed::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--warn); animation:blink 1.2s infinite; }
+  @keyframes bob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-3px) } }
+  @keyframes receive { 0%,70%,100% { transform:scale(1) } 85% { transform:scale(1.1) } }
+  @keyframes radar { from { opacity:.45; transform:scale(1) } to { opacity:0; transform:scale(1.75) } }
+  @keyframes dash { to { background-position:12px 0 } }
+  @keyframes packet { 0% { left:0; opacity:0; transform:scale(.4) } 15% { opacity:1; transform:scale(1) } 85% { opacity:1; transform:scale(1) } 100% { left:100%; opacity:0; transform:scale(.4) } }
+  @keyframes tap { from { transform:scale(.6) } to { transform:scale(1.9); opacity:0 } }
+  #waitText { margin:0; font:600 22px/1.25 var(--sans); letter-spacing:-.015em; color:var(--ink); }
+  .wait p { margin:0; color:var(--muted); }
+
+  .stage { position:relative; background:#000; aspect-ratio:3/4; max-height:66vh; width:100%; border-radius:22px; overflow:hidden; box-shadow:var(--shadow); }
+  video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .hud { position:absolute; left:12px; right:12px; top:12px; display:flex; justify-content:space-between; gap:8px; }
+  .pill { display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:99px; font-size:12.5px; color:#fff; background:#000000cc; border:1px solid #ffffff22; max-width:72%; }
+  .pill i { width:8px; height:8px; border-radius:50%; background:var(--bad); animation:blink 1.1s infinite; flex:none; }
+  @keyframes blink { 50% { opacity:.25 } }
+  #badge { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .stat { padding:12px 14px; border-radius:16px; background:var(--panel); border:1px solid var(--line); }
+  .stat b { display:block; font:700 22px var(--sans); font-variant-numeric:tabular-nums; color:var(--ink); }
+  .actions { display:grid; grid-template-columns:auto 1fr; gap:10px; }
+
+  /* right info panel */
+  .badge { display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:99px; background:var(--badge); color:var(--badge-ink); font-size:12.5px; font-weight:500; }
+  .right h2 { margin:26px 0 0; font:600 28px/1.2 var(--sans); letter-spacing:-.02em; color:var(--ink); max-width:20ch; }
+  .right h2 span { color:var(--muted); }
+  .facts { margin-top:34px; display:grid; gap:22px; max-width:46ch; }
+  .fact { display:flex; gap:14px; }
+  .fact .ic { width:34px; height:34px; border-radius:10px; border:1px solid var(--line); display:grid; place-items:center; color:var(--ink); flex:none; background:var(--bg); }
+  .fact b { display:block; color:var(--ink); font-weight:600; }
+  .fact span { color:var(--muted); font-size:13.5px; }
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2.5"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.4 3 7.6 7.5 9.5 4.5-1.9 7.5-5.1 7.5-9.5V6z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+</svg>
+
+<div class="shell">
+  <div class="left">
+    <div class="top">
+      <div class="brand">ODS</div>
+      <button class="round" id="theme" aria-label="Toggle light or dark theme"><svg class="i"><use href="#i-moon"/></svg></button>
+    </div>
+
+    <div class="content">
+      <div>
+        <div class="eyebrow" id="eyebrow">Connect</div>
+        <h1 id="heading">Use this phone as the camera.</h1>
+      </div>
+
+      <p id="msg" hidden></p>
+
+      <section id="pick" style="display:grid;gap:18px">
+        <p class="lede">Pick a computer running ODS. Once it accepts, your camera is analysed there and the results appear on its screen.</p>
+        <div class="seg" role="tablist">
+          <button id="tabNear" class="on" role="tab">Nearby</button>
+          <button id="tabCode" role="tab">Enter code</button>
+        </div>
+
+        <div id="paneNear" style="display:grid;gap:14px">
+          <div class="row"><span class="eyebrow">Computers on this network</span><span id="scan">Searching…</span></div>
+          <ul id="hosts"></ul>
+          <p id="empty" hidden>
+            None found yet. On the computer open this site and turn on <b>Phone camera</b>,
+            or switch to <b>Enter code</b>.
+          </p>
+        </div>
+
+        <div id="paneCode" style="display:grid;gap:14px" hidden>
+          <div class="row"><span class="eyebrow">6-digit code from the computer</span></div>
+          <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="off">
+          <button id="byCode" class="btn primary wide">Connect</button>
+        </div>
+
+        <div class="divider"><span class="eyebrow">This phone</span></div>
+        <label class="field"><span class="eyebrow">Name shown to the computer</span><input type="text" id="name" maxlength="40"></label>
+        <p class="alt"><a href="/?local">Detect on this phone's own screen instead</a></p>
+      </section>
+
+      <section id="wait" hidden class="wait">
+        <button class="link" id="loader" type="button" aria-label="Request sent to the computer. Tap for a little animation.">
+          <span class="node me"><svg class="i"><use href="#i-phone"/></svg></span>
+          <span class="wire" id="wire"><i></i><i></i><i></i></span>
+          <span class="node pc"><b class="radar"></b><b class="radar"></b><svg class="i"><use href="#i-monitor"/></svg></span>
+        </button>
+        <span class="elapsed" id="elapsed">Waiting 0:00</span>
+        <p id="waitText">Waiting for the computer to accept…</p>
+        <p>Press <b>Accept</b> on the computer's screen.</p>
+        <button id="cancel" class="btn">Cancel</button>
+      </section>
+
+      <section id="live" hidden style="display:grid;gap:14px">
+        <div class="stage">
+          <video id="video" playsinline muted></video>
+          <div class="hud"><span class="pill"><i></i><span id="badge"></span></span><span class="pill mono" id="clock">00:00</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="eyebrow">Frames sent</span><b id="sent">0</b></div>
+          <div class="stat"><span class="eyebrow">Found now</span><b id="foundNow">0</b></div>
+        </div>
+        <div class="actions">
+          <button id="flip" class="btn" aria-label="Switch camera"><svg class="i"><use href="#i-flip"/></svg></button>
+          <button id="stop" class="btn danger"><svg class="i"><use href="#i-stop"/></svg>Stop streaming</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <aside class="right">
+    <span class="badge"><svg class="i" style="width:14px;height:14px"><use href="#i-shield"/></svg>You stay in control</span>
+    <h2>Your camera, your computer. <span>Nothing starts until it says yes.</span></h2>
+    <div class="facts">
+      <div class="fact"><span class="ic"><svg class="i"><use href="#i-check"/></svg></span>
+        <div><b>Every connection is approved</b><span>The computer shows an accept prompt each time a phone asks to stream.</span></div></div>
+      <div class="fact"><span class="ic"><svg class="i"><use href="#i-eye"/></svg></span>
+        <div><b>You choose what is detected</b><span>Only the classes selected on the computer are looked for. Everything else is ignored.</span></div></div>
+      <div class="fact"><span class="ic"><svg class="i"><use href="#i-shield"/></svg></span>
+        <div><b>Frames are not saved</b><span>Each frame is analysed in memory and discarded. Stop at any time from either device.</span></div></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pref = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
+const MIN_GAP_MS = 70;                 // ~14 fps ceiling; the ack round trip usually limits it first
+const grab = document.createElement('canvas');
+let ws = null, stream = null, state = 'pick', facing = 'environment';
+let busy = false, lastSent = 0, watchdog = null, wakeLock = null, pollTimer = null, hostName = '';
+let sent = 0, liveSince = 0, clockTimer = null;
+
+function guessName() {
+  const ua = navigator.userAgent;
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua)) return 'iPad';
+  const m = ua.match(/Android[^;]*;\s*([^;)]+)/);
+  return m ? m[1].replace(/\s*Build.*/, '').trim() : 'Phone';
+}
+$('name').value = pref('ods.phoneName') || guessName();
+$('name').onchange = () => pref('ods.phoneName', $('name').value.trim());
+const phoneName = () => $('name').value.trim() || 'Phone';
+
+$('theme').onclick = () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next; pref('ods.theme', next);
+};
+
+const HEAD = {
+  pick: ['Connect', 'Use this phone as the camera.'],
+  wait: ['Request sent', 'Waiting for approval.'],
+  live: ['Streaming', 'You are live.'],
+};
+function show(next) {
+  state = next;
+  $('pick').hidden = next !== 'pick'; $('wait').hidden = next !== 'wait'; $('live').hidden = next !== 'live';
+  $('eyebrow').textContent = HEAD[next][0]; $('heading').textContent = HEAD[next][1];
+  if (next === 'pick') poll(); else clearTimeout(pollTimer);
+  waitClock(next === 'wait');
+  if (navigator.vibrate && next === 'live') navigator.vibrate(60);
+}
+// ---- waiting loader --------------------------------------------------------------------------
+let waitTimer, waitStart = 0;
+function waitClock(on) {
+  clearInterval(waitTimer);
+  if (!on) return;
+  waitStart = Date.now();
+  const tick = () => { const s = Math.floor((Date.now() - waitStart) / 1000);
+    $('elapsed').textContent = `Waiting ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  tick(); waitTimer = setInterval(tick, 1000);
+}
+$('loader').onclick = () => {
+  const link = $('loader');
+  [0, 110, 220].forEach(d => setTimeout(() => {
+    const p = document.createElement('i'); p.className = 'burst';
+    p.addEventListener('animationend', () => p.remove()); $('wire').append(p);
+  }, d));
+  const t = document.createElement('span'); t.className = 'tap';
+  t.addEventListener('animationend', () => t.remove()); link.append(t);
+  setTimeout(() => { link.classList.add('hit'); setTimeout(() => link.classList.remove('hit'), 260); }, 700);
+  navigator.vibrate?.(15);
+};
+$('wait').addEventListener('pointermove', e => {
+  const r = $('loader').getBoundingClientRect();
+  const x = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / r.width));
+  const y = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / r.height));
+  $('loader').style.setProperty('--rx', x * 14 + 'deg'); $('loader').style.setProperty('--ry', -y * 14 + 'deg');
+});
+$('wait').addEventListener('pointerleave', () => { $('loader').style.setProperty('--rx', '0deg'); $('loader').style.setProperty('--ry', '0deg'); });
+
+function note(text) { $('msg').textContent = text; $('msg').hidden = !text; }
+
+function tab(code) {
+  $('tabNear').classList.toggle('on', !code); $('tabCode').classList.toggle('on', code);
+  $('paneNear').hidden = code; $('paneCode').hidden = !code;
+  if (code) $('code').focus();
+}
+$('tabNear').onclick = () => tab(false);
+$('tabCode').onclick = () => tab(true);
+
+// ---- discovery ---------------------------------------------------------------------------------
+async function poll() {
+  clearTimeout(pollTimer);
+  try {
+    const { hosts } = await (await fetch('/api/hosts', { cache: 'no-store' })).json();
+    renderHosts(hosts);
+    $('scan').textContent = hosts.length ? `${hosts.length} found` : 'Searching…';
+  } catch { $('scan').textContent = 'Offline'; }
+  if (state === 'pick') pollTimer = setTimeout(poll, 3000);
+}
+function renderHosts(hosts) {
+  const ul = $('hosts'), prev = [...ul.children].map(li => li.dataset.id + li.dataset.busy).join();
+  if (prev === hosts.map(h => h.id + h.busy).join()) { $('empty').hidden = hosts.length > 0; return; }  // no flicker
+  ul.innerHTML = '';
+  $('empty').hidden = hosts.length > 0;
+  hosts.forEach((h, i) => {                      // server order = who has been waiting longest
+    const li = document.createElement('li'), b = document.createElement('button');
+    li.dataset.id = h.id; li.dataset.busy = h.busy; li.style.animationDelay = i * 60 + 'ms';
+    b.disabled = h.busy;
+    b.innerHTML = '<span class="pc"><svg class="i"><use href="#i-monitor"/></svg></span>' +
+      '<span class="grow"><b></b><span class="tag"></span></span>' +
+      '<svg class="i go"><use href="#i-chev"/></svg>';
+    b.querySelector('b').textContent = h.name;
+    b.querySelector('.tag').textContent = h.busy ? 'In use by another phone' : 'Tap to connect';
+    b.onclick = () => connect({ host_id: h.id }, h.name);
+    li.append(b); ul.append(li);
+  });
+}
+$('byCode').onclick = async () => {
+  const code = $('code').value.trim();
+  if (code.length !== 6) { note('Enter the 6-digit code shown on the computer.'); return; }
+  const { hosts } = await (await fetch('/api/hosts?code=' + encodeURIComponent(code), { cache: 'no-store' })).json();
+  if (!hosts.length) { note('No computer with that code. Check it is still open and try again.'); return; }
+  if (hosts[0].busy) { note(`“${hosts[0].name}” is already in use.`); return; }
+  connect({ code }, hosts[0].name);
+};
+
+// ---- pairing + streaming -----------------------------------------------------------------------
+function connect(target, name) {
+  note(''); hostName = name; show('wait');
+  $('waitText').textContent = `Waiting for “${name}” to accept…`;
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/phone');
+  const mine = ws;
+  mine.onopen = () => mine.send(JSON.stringify({ type: 'request', name: phoneName(), ...target }));
+  mine.onmessage = async e => {
+    if (ws !== mine) return;          // stale socket from an earlier attempt
+    const m = JSON.parse(e.data);
+    if (m.type === 'accepted') await goLive();
+    else if (m.type === 'ack') {
+      busy = false; clearTimeout(watchdog);
+      if (m.error) $('badge').textContent = m.error;
+      else { $('badge').textContent = `Streaming to “${hostName}” · ${m.ms} ms`; $('foundNow').textContent = m.found; }
+      pump();
+    }
+    else if (m.type === 'declined') leave({ declined: 'The computer declined.', busy: 'That computer is busy with another phone.',
+      gone: 'That computer is no longer available.', host_left: 'The computer went offline.' }[m.reason] || 'Not connected.');
+    else if (m.type === 'ended') leave({ host_ended: 'The computer disconnected this phone.', host_left: 'The computer went offline.' }[m.reason] || 'Disconnected.');
+    else if (m.type === 'error') note(m.error);
+  };
+  mine.onclose = () => { if (ws === mine && state !== 'pick') leave('Connection lost.'); };
+}
+
+async function openCamera() {
+  stream?.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: facing }, width: { ideal: 1280 } }, audio: false });
+  const v = $('video'); v.srcObject = stream; await v.play();
+}
+async function goLive() {
+  try { await openCamera(); }
+  catch (e) {
+    leave('Camera error: ' + e.message + (window.isSecureContext ? '' : ' (this page must be opened over HTTPS)'));
+    return;
+  }
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
+  $('badge').textContent = `Streaming to “${hostName}”`;
+  sent = 0; $('sent').textContent = '0'; $('foundNow').textContent = '0';
+  liveSince = Date.now(); clearInterval(clockTimer);
+  clockTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - liveSince) / 1000);
+    $('clock').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+  $('clock').textContent = '00:00';
+  show('live'); busy = false; pump();
+}
+function pump() {
+  if (state !== 'live' || busy) return;
+  const v = $('video');
+  if (ws?.readyState !== 1 || !v.videoWidth) { setTimeout(pump, 100); return; }
+  const wait = lastSent + MIN_GAP_MS - performance.now();
+  if (wait > 0) { setTimeout(pump, wait); return; }
+  const scale = Math.min(1, 960 / v.videoWidth);
+  grab.width = v.videoWidth * scale; grab.height = v.videoHeight * scale;
+  grab.getContext('2d').drawImage(v, 0, 0, grab.width, grab.height);
+  busy = true; lastSent = performance.now();
+  clearTimeout(watchdog); watchdog = setTimeout(() => { busy = false; pump(); }, 20000);   // lost ack: keep going (cold starts take ~40 s)
+  grab.toBlob(b => { if (b && ws?.readyState === 1) { ws.send(b); sent++; $('sent').textContent = sent; } }, 'image/jpeg', 0.7);
+}
+
+function leave(text) {
+  const old = ws; ws = null; old?.close();
+  clearTimeout(watchdog); clearInterval(clockTimer); busy = false;
+  stream?.getTracks().forEach(t => t.stop()); stream = null;
+  try { wakeLock?.release(); } catch {} wakeLock = null;
+  note(text || ''); show('pick');
+}
+$('cancel').onclick = () => leave('');
+$('stop').onclick = () => leave('Stopped.');
+$('flip').onclick = async () => {
+  facing = facing === 'environment' ? 'user' : 'environment';
+  try { await openCamera(); } catch (e) { note('Could not switch camera: ' + e.message); }
+};
+document.addEventListener('visibilitychange', async () => {      // re-acquire the lock after tab switches
+  if (state === 'live' && document.visibilityState === 'visible') { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
+});
+
+show('pick');
+</script>
+</body>
+</html>

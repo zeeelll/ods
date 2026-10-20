@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+weights/*.pt
+weights/*.onnx
+*.pt

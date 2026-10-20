@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ODS · Detection workspace</title>
+<script>
+  // Phones go to the "pick a computer" page; use /?local to run detection on the phone's own screen.
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !location.search.includes('local')) location.replace('/phone');
+  try { const t = localStorage.getItem('ods.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  document.documentElement.classList.add('no-anim');   // no transitions while the first layout settles
+</script>
+<link rel="stylesheet" href="/static/workspace.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.4 3 7.6 7.5 9.5 4.5-1.9 7.5-5.1 7.5-9.5V6z"/><path d="M8 12.5h2.2l1.6-3.4 2.2 6 1.4-2.6H17"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2.5"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <aside class="side" aria-label="Detection settings">
+    <div class="side-top">
+      <div class="brand"><span>ODS<small>VISION WORKSPACE</small></span></div>
+      <button class="ghost" id="collapse" title="Hide sidebar" aria-label="Hide sidebar"><svg class="i"><use href="#i-panel"/></svg></button>
+    </div>
+
+    <div class="nav">
+      <div class="sec"><span class="eyebrow">Camera source</span></div>
+      <button class="item sel" id="srcLocal" type="button"><svg class="i"><use href="#i-monitor"/></svg>
+        <span class="grow">This computer<span class="sub" id="srcLocalSub">Camera off</span></span><span class="live-dot"></span></button>
+      <button class="item" id="srcPhone"><svg class="i"><use href="#i-phone"/></svg>
+        <span class="grow">Phone camera<span class="sub" id="srcPhoneSub">Not accepting</span></span><span class="live-dot"></span></button>
+
+      <div class="sec"><span class="eyebrow">Object classes</span>
+        <span class="links"><button id="selAll">All</button><button id="selNone">None</button></span></div>
+      <label class="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><input id="classSearch" type="search" placeholder="Search objects…" aria-label="Search object classes" autocomplete="off"></label>
+      <div id="classes" aria-label="Object classes"></div>
+      <p id="classEmpty" hidden>No matching objects.</p>
+      <p class="selection-note" id="selectionCount" aria-live="polite">Loading object classes…</p>
+    </div>
+
+    <div class="side-foot">
+      <span class="avatar" id="avatar">C</span>
+      <div class="who"><b id="whoName">Computer</b><span>Local detection workspace</span></div>
+      <button class="ghost" id="theme" title="Toggle light / dark" aria-label="Toggle light or dark theme"><svg class="i"><use href="#i-moon"/></svg></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="bar">
+      <div class="crumbs">
+        <button class="ghost" id="expand" title="Show sidebar" aria-label="Show sidebar" hidden><svg class="i"><use href="#i-panel"/></svg></button>
+        <span class="crumb-root">Workspace</span><span class="slash">/</span><b>Live detection</b>
+        <span class="badge" id="conn"><span class="d"></span><span id="connText">Idle</span></span>
+      </div>
+      <div class="bar-actions">
+        <button class="pillbtn" id="jump"><svg class="i"><use href="#i-phone"/></svg>Pair a phone</button>
+      </div>
+    </header>
+
+    <div class="scroll">
+      <div class="thread">
+        <div class="intro">
+          <div><div class="eyebrow">YOUR DETECTION WORKSPACE</div>
+            <h1 id="title">A little more vision.</h1>
+            <p class="lede" id="lede">Choose your objects. Connect a camera. See what’s in view.</p>
+          </div>
+          <span class="local-note"><svg class="i"><use href="#i-logo"/></svg>Processed on your server</span>
+        </div>
+
+        <section class="preview-card" aria-label="Camera preview">
+          <div class="preview-head"><span class="preview-label"><svg class="i"><use href="#i-monitor"/></svg>Live preview</span><span class="eyebrow">REAL-TIME OBJECT DETECTION</span></div>
+        <div class="stage idle" id="stage">
+          <video id="video" playsinline muted></video>
+          <img id="remote" alt="" hidden>
+          <canvas id="overlay"></canvas>
+          <div class="empty">
+            <div class="bg" aria-hidden="true">
+              <i class="grid"></i><i class="frame"><i class="scan"></i></i>
+            </div>
+            <div class="ring"><svg class="i"><use href="#i-camera"/></svg></div>
+            <b id="emptyTitle">Your camera view starts here</b>
+            <span id="emptyHint">Start your camera or pair a phone to bring your workspace to life.</span>
+          </div>
+          <div class="hud hud-tl"><span class="pill" id="sourceBadge"><i></i><span id="sourceText">No source</span></span></div>
+          <div class="hud hud-tr">
+            <span class="pill mono" id="fps">– fps</span>
+            <span class="pill mono" id="latency">– ms</span>
+            <span class="pill" id="found">0 found</span>
+          </div>
+          <div class="stage-caption"><span>Awaiting camera input</span><span>ODS VISION</span></div>
+        </div>
+    <div class="dock">
+      <div class="composer">
+        <span id="status" role="status">Ready when you are. Start a camera to begin.</span>
+        <div class="tools" aria-label="Camera controls">
+          <span class="cam" id="camWrap">
+            <button class="tool camBtn" id="camBtn" aria-haspopup="listbox" aria-expanded="false" title="Choose camera"><svg class="i"><use href="#i-camera"/></svg><span class="lab" id="camLabel">Default camera</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+            <div class="menu" id="camMenu" hidden>
+              <div class="menu-h"><span class="eyebrow">Camera</span><span class="eyebrow" id="camCount"></span></div>
+              <div class="menu-list" id="camList" role="listbox" aria-label="Available cameras"></div>
+              <div class="menu-f" id="camFoot"></div>
+            </div>
+            <select id="camera" hidden aria-hidden="true"><option value="">Default camera</option></select>
+          </span>
+          <span class="tool"><svg class="i"><use href="#i-sliders"/></svg>Confidence <b id="confVal" class="mono">0.35</b>
+            <input id="conf" type="range" min="0.1" max="0.9" step="0.05" value="0.35" aria-label="Confidence"></span>
+          <span class="send">
+            <button id="camToggle" class="camtoggle" title="Start or stop the camera (Space)">
+              <svg class="i" id="camPlay"><use href="#i-play"/></svg><svg class="i" id="camStop"><use href="#i-stop"/></svg>
+              <span id="camToggleText">Start camera</span><kbd>Space</kbd>
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+          <div class="result-row"><svg class="i"><use href="#i-sliders"/></svg><p id="sayText">Your detection results will appear here.</p></div>
+        </section>
+
+        <div class="filters">
+            <span class="eyebrow">Quick selection</span>
+            <div class="chips" id="presets">
+              <button class="sugg" aria-pressed="false" data-set="person">People only</button>
+              <button class="sugg" aria-pressed="false" data-set="bicycle,car,motorcycle,bus,truck,airplane,boat">Vehicles</button>
+              <button class="sugg" aria-pressed="false" data-set="bird,cat,dog">Animals</button>
+              <button class="sugg" aria-pressed="false" data-set="*">Everything</button>
+            </div>
+        </div>
+
+        <div class="msg pairing" id="phoneCard" data-state="off">
+          <div class="msg-h">
+            <div class="pair-toggle" id="pairToggle">
+              <span class="pair-icon"><svg class="i"><use href="#i-phone"/></svg></span>
+              <span><span class="pair-title">Use your phone as a camera</span><span class="pair-subtitle" id="pairSummary">A different perspective, same workspace.</span></span>
+            </div>
+            <label class="allow" title="Let phones stream their camera to this computer">
+              <span id="allowText">Allow phones</span>
+              <span class="switch"><input type="checkbox" id="accept" aria-label="Accept phone cameras on this computer"><span class="track"></span></span>
+            </label>
+          </div>
+          <div class="msg-b" id="pairBody">
+            <div class="viz" aria-hidden="true">
+              <span class="node"><svg class="i"><use href="#i-phone"/></svg></span>
+              <span class="beam"><i></i><i></i><i></i></span>
+              <span class="node"><svg class="i"><use href="#i-monitor"/></svg></span>
+            </div>
+            <div class="state-row">
+              <b id="phoneState">Phone camera is off</b>
+              <span id="phoneStatus"></span>
+              <button id="disconnect" class="pillbtn" hidden>Disconnect</button>
+            </div>
+            <p class="muted off-note" id="offNote">Turn on <b>Allow phones</b> to show this computer in your phone's list. Nothing streams until you accept.</p>
+
+            <div id="phoneInfo" class="reveal" data-ready="false">
+              <div class="pair2 pending-area">
+                <div class="codecol">
+                  <span class="eyebrow">Pairing code</span>
+                  <div class="tiles" id="codeTiles"></div>
+                  <span id="hostCode" class="sr"></span>
+                  <div class="link-row"><svg class="i" style="color:var(--muted)"><use href="#i-link"/></svg><b id="phoneUrl"></b>
+                    <button class="ghost" id="copyUrl" title="Copy phone link" aria-label="Copy phone link"><svg class="i"><use href="#i-copy"/></svg></button>
+                    <button class="ghost" id="copyCode" title="Copy code" aria-label="Copy code"><svg class="i"><use href="#i-copy"/></svg></button>
+                  </div>
+                </div>
+                <div class="qrcol" id="qrCol">
+                  <canvas id="qr" hidden title="Scan with your phone's camera"></canvas>
+                  <div class="qr-ph" id="qrPh" aria-hidden="true"><i></i></div>
+                  <span class="eyebrow" id="qrCap">Scan to open</span>
+                </div>
+              </div>
+              <ol class="steps pending-area">
+                <li><i>1</i><span>Open the link or scan the code on your phone</span></li>
+                <li><i>2</i><span>Tap this computer in the list, or type the code</span></li>
+                <li><i>3</i><span>Press <b>Accept</b> here when asked</span></li>
+              </ol>
+              <label class="field"><span class="eyebrow">This computer's name</span><input type="text" id="hostName" maxlength="40"></label>
+              <div id="phoneHint" class="hint" hidden>This address only works on this computer. Start the server with
+                <b>uv run ods --share</b> to get a link your phone can open.</div>
+            </div>
+          </div>
+        </div>
+        <div class="fine"><svg class="i"><use href="#i-logo"/></svg><span>Detection runs on your ODS server. Camera frames are never saved.</span></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<dialog id="reqDialog" aria-labelledby="reqTitle" aria-describedby="reqBody">
+  <div class="eyebrow">Incoming phone</div>
+  <h3 id="reqTitle"></h3>
+  <p id="reqBody"></p>
+  <div class="actions">
+    <button id="reqNo" class="pillbtn">Decline</button>
+    <button id="reqYes" class="pillbtn dark">Accept</button>
+  </div>
+</dialog>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="/static/vendor/qrcode.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const pref = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
+const video = $('video'), overlay = $('overlay'), ctx = overlay.getContext('2d');
+const grab = document.createElement('canvas');
+let ws = null, stream = null, busy = false, running = false, starting = false;
+let hostWs = null, phoneLive = false, phoneName = '', reqQueue = [], hostRetry = null;
+
+// A class always gets the same bounding-box colour, regardless of when it first appears.
+const hue = c => { let h = 7; for (const ch of c) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+const color = c => `hsl(${hue(c)} 70% 48%)`;
+const PLURAL = { person: 'people', bus: 'buses', bicycle: 'bicycles', airplane: 'airplanes' };
+const plural = (c, n) => n === 1 ? c : (PLURAL[c] || c + 's');
+
+function toast(text, kind = '') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind; t.textContent = text; $('toasts').append(t);
+  requestAnimationFrame(() => t.classList.add('in'));
+  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 300); }, 3600);
+}
+
+// ---- header / stage / copy state --------------------------------------------------------------
+function refreshState() {
+  let text = 'Idle', cls = '', source = 'No source', on = false;
+  if (phoneLive) { text = 'Phone live'; cls = 'live'; source = phoneName || 'Phone'; on = true; }
+  else if (running) { text = 'Camera live'; cls = 'live'; source = 'This computer'; on = true; }
+  else if (hostWs?.readyState === 1) { text = 'Waiting for phone'; cls = 'wait'; }
+  $('conn').className = 'badge ' + cls; $('connText').textContent = text;
+  $('stage').classList.toggle('idle', !on);
+  $('sourceBadge').classList.toggle('on', on); $('sourceText').textContent = source;
+  $('camToggle').disabled = phoneLive || starting;
+  $('camToggle').classList.toggle('running', running);
+  $('camToggleText').textContent = starting ? 'Starting…' : running ? 'Stop camera' : 'Start camera';
+  $('camToggle').title = phoneLive ? 'Disconnect the phone first' : 'Start or stop the camera (Space)';
+  $('srcLocal').classList.toggle('on', running); $('srcLocal').classList.toggle('sel', !phoneLive);
+  $('srcLocalSub').textContent = running ? 'Streaming' : 'Camera off';
+  $('srcPhone').classList.toggle('on', phoneLive); $('srcPhone').classList.toggle('sel', phoneLive || (!!hostWs && !phoneLive));
+  $('srcPhoneSub').textContent = phoneLive ? `Streaming · ${phoneName}` : hostWs?.readyState === 1 ? 'Waiting for a phone' : 'Not accepting';
+  const pstate = phoneLive ? 'live' : hostWs?.readyState === 1 ? 'wait' : 'off';
+  $('phoneCard').dataset.state = pstate;
+  $('phoneState').textContent = { off: 'Phone camera is off', wait: 'Ready for a phone', live: `Connected to \u201c${phoneName}\u201d` }[pstate];
+  $('allowText').textContent = pstate === 'off' ? 'Allow phones' : 'Allowing phones';
+  $('pairSummary').textContent = phoneLive ? `Connected · ${phoneName}` : hostWs?.readyState === 1 ? 'Ready to pair · waiting for your phone' : 'A different perspective, same workspace.';
+  $('emptyTitle').textContent = starting ? 'Connecting your camera…' : 'Your camera view starts here';
+  $('emptyHint').textContent = starting ? 'Allow camera access in your browser to continue.' : 'Start your camera or pair a phone to bring your workspace to life.';
+  document.title = reqQueue.length ? '(1) ODS · Phone request' : 'ODS · Detection workspace';
+  refreshCopy();
+}
+function listNames(names) {
+  const q = names.map(n => n === 'person' ? 'people' : n + 's');
+  return q.length > 2 ? q.slice(0, -1).join(', ') + ' and ' + q.at(-1) : q.join(' and ');
+}
+function refreshCopy() {
+  const sel = selected();
+  if (phoneLive) $('title').textContent = 'A connected perspective.';
+  else if (running) $('title').textContent = 'Your world, in focus.';
+  else $('title').textContent = 'A little more vision.';
+  $('lede').textContent = sel.length
+    ? `Detecting ${sel.length <= 3 ? listNames(sel) : sel.length + ' object classes'} · ${Math.round(+$('conf').value * 100)}% minimum confidence.`
+    : 'Choose your objects. Connect a camera. See what’s in view.';
+  if (!phoneLive && !running) $('sayText').textContent = sel.length
+    ? 'Your detection results will appear here once a camera is connected.'
+    : 'Select an object class or a quick selection to begin detecting.';
+  const available = [...document.querySelectorAll('#classes input:not(:disabled)')];
+  $('selectionCount').textContent = `${sel.length} of ${available.length} classes selected`;
+  for (const b of document.querySelectorAll('#presets .sugg')) {
+    const want = available.filter(i => b.dataset.set === '*' || b.dataset.set.split(',').includes(i.value)).map(i => i.value);
+    b.setAttribute('aria-pressed', String(want.length > 0 && want.length === sel.length && want.every(c => sel.includes(c))));
+  }
+}
+
+// ---- live stats -------------------------------------------------------------------------------
+let lastAt = 0, fps = 0;
+function noteResult(dets, ms) {
+  const now = performance.now();
+  if (lastAt) { const inst = 1000 / (now - lastAt); fps = fps ? fps * 0.8 + inst * 0.2 : inst; }
+  lastAt = now;
+  $('fps').textContent = fps.toFixed(1) + ' fps'; $('latency').textContent = ms + ' ms';
+  $('found').textContent = dets.length + ' found';
+  const n = {};
+  for (const d of dets) n[d.class] = (n[d.class] || 0) + 1;
+  for (const el of document.querySelectorAll('#classes .chip')) {
+    const v = n[el.dataset.cls] || 0;
+    el.querySelector('.count').textContent = el.classList.contains('off') ? 'N/A' : v || ''; el.classList.toggle('hit', v > 0);
+  }
+  const parts = Object.entries(n).map(([c, v]) => `${v} ${plural(c, v)}`);
+  $('sayText').textContent = parts.length ? `In view: ${parts.join(', ')}.` : selected().length ? 'No selected objects in view. Detection is running.' : 'No classes selected. Choose an object class to detect.';
+}
+function resetStats() {
+  lastAt = 0; fps = 0;
+  $('fps').textContent = '– fps'; $('latency').textContent = '– ms'; $('found').textContent = '0 found';
+  for (const el of document.querySelectorAll('#classes .chip')) { el.querySelector('.count').textContent = el.classList.contains('off') ? 'N/A' : ''; el.classList.remove('hit'); }
+}
+
+// ---- classes + config -------------------------------------------------------------------------
+function selected() { return [...document.querySelectorAll('#classes input:checked')].map(i => i.value); }
+function sendConfig() {
+  const cfg = { classes: selected(), conf: +$('conf').value };
+  if (ws?.readyState === 1) ws.send(JSON.stringify(cfg));
+  if (hostWs?.readyState === 1) hostWs.send(JSON.stringify({ type: 'config', ...cfg }));
+}
+function onSelectionChanged() {
+  pref('ods.classes', JSON.stringify(selected()));
+  sendConfig(); refreshCopy();
+}
+
+async function loadClasses() {
+  const response = await fetch('/api/classes');
+  if (!response.ok) throw new Error('Could not load object classes');
+  const { classes, default_conf } = await response.json();
+  $('conf').value = pref('ods.conf') || default_conf; setConf();
+  let saved = ['person'];
+  try { const stored = JSON.parse(pref('ods.classes') || 'null'); if (Array.isArray(stored)) saved = stored; } catch {}
+  $('classes').innerHTML = '';
+  for (const c of classes) {
+    const l = document.createElement('label');
+    l.className = 'chip' + (c.available ? '' : ' off');
+    l.dataset.cls = c.class;
+    l.title = c.available ? `model: ${c.model}` : `model "${c.model}" weights missing — see README`;
+    l.innerHTML = `<input type="checkbox" value="${c.class}" ${c.available ? '' : 'disabled'}>` +
+      `<span class="dot" aria-hidden="true"></span><span class="name">${c.class}</span><span class="count">${c.available ? '' : 'N/A'}</span>`;
+    const input = l.querySelector('input');
+    input.checked = c.available && saved.includes(c.class);
+    input.onchange = onSelectionChanged;
+    $('classes').append(l);
+  }
+  sendConfig(); refreshCopy(); filterClasses();
+}
+function filterClasses() {
+  const term = $('classSearch').value.trim().toLowerCase();
+  let visible = 0;
+  for (const el of document.querySelectorAll('#classes .chip')) {
+    el.hidden = !el.dataset.cls.toLowerCase().includes(term);
+    if (!el.hidden) visible++;
+  }
+  $('classEmpty').hidden = visible > 0;
+}
+$('classSearch').oninput = filterClasses;
+function setAll(on) {
+  document.querySelectorAll('#classes input:not(:disabled)').forEach(i => { i.checked = on; });
+  onSelectionChanged();
+}
+$('selAll').onclick = () => setAll(true);
+$('selNone').onclick = () => setAll(false);
+for (const b of document.querySelectorAll('#presets .sugg')) {
+  b.onclick = () => {
+    const want = b.dataset.set === '*' ? null : b.dataset.set.split(',');
+    document.querySelectorAll('#classes input:not(:disabled)').forEach(i => { i.checked = want === null || want.includes(i.value); });
+    onSelectionChanged();
+  };
+}
+
+function setConf() {
+  const el = $('conf'), pct = (el.value - el.min) / (el.max - el.min) * 100;
+  el.style.setProperty('--pct', pct + '%'); $('confVal').textContent = (+el.value).toFixed(2);
+}
+$('conf').oninput = () => { setConf(); pref('ods.conf', $('conf').value); sendConfig(); refreshCopy(); };
+
+// ---- this computer's camera -------------------------------------------------------------------
+async function loadCameras() {
+  // Labels are only populated after permission is granted.
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const cur = $('camera').value;
+  $('camera').innerHTML = '<option value="">Default camera</option>' +
+    devs.map(d => `<option value="${d.deviceId}">${d.label || 'Camera ' + d.deviceId.slice(0, 6)}</option>`).join('');
+  $('camera').value = cur;
+  renderCamMenu();
+}
+
+// ---- camera picker (custom list; the hidden <select> holds the value) ---------------------------
+function renderCamMenu() {
+  const sel = $('camera'), opts = [...sel.options];
+  const cur = opts.find(o => o.value === sel.value) || opts[0];
+  $('camLabel').textContent = cur.textContent;
+  $('camCount').textContent = opts.length > 1 ? `${opts.length - 1} found` : '';
+  $('camFoot').textContent = opts.length > 5 ? `Scroll for more · ${opts.length - 1} cameras · changing restarts the stream`
+    : opts.length > 1 ? 'Changing the camera restarts the stream.'
+    : 'Start the camera once to list every camera on this computer.';
+  $('camList').innerHTML = '';
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.className = 'opt' + (o.value === sel.value ? ' sel' : ''); b.role = 'option'; b.type = 'button';
+    b.setAttribute('aria-selected', String(o.value === sel.value));
+    b.innerHTML = '<svg class="i"><use href="#i-camera"/></svg><span class="t"></span><svg class="i ck"><use href="#i-check"/></svg>';
+    b.querySelector('.t').textContent = o.textContent;
+    b.onclick = () => { sel.value = o.value; renderCamMenu(); closeCamMenu(); $('camBtn').focus(); sel.onchange(); };
+    $('camList').append(b);
+  }
+}
+function openCamMenu() { renderCamMenu(); $('camMenu').hidden = false; $('camBtn').setAttribute('aria-expanded', 'true'); $('camList').querySelector('.sel')?.focus(); }
+function closeCamMenu() { $('camMenu').hidden = true; $('camBtn').setAttribute('aria-expanded', 'false'); }
+$('camBtn').onclick = () => $('camMenu').hidden ? openCamMenu() : closeCamMenu();
+document.addEventListener('click', e => { if (!$('camWrap').contains(e.target)) closeCamMenu(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('camMenu').hidden) { closeCamMenu(); $('camBtn').focus(); }
+});
+$('camList').onkeydown = e => {
+  const opts = [...$('camList').querySelectorAll('.opt')], index = opts.indexOf(document.activeElement);
+  let next;
+  if (e.key === 'ArrowDown') next = (index + 1) % opts.length;
+  if (e.key === 'ArrowUp') next = (index - 1 + opts.length) % opts.length;
+  if (e.key === 'Home') next = 0;
+  if (e.key === 'End') next = opts.length - 1;
+  if (next !== undefined) { e.preventDefault(); opts[next]?.focus(); }
+};
+$('camera').onchange = async () => { if (running) { stop(); await start(); } };
+
+
+async function start() {
+  if (phoneLive) { $('status').textContent = 'Disconnect the phone first'; return; }
+  if (starting || running) return;
+  starting = true; $('status').textContent = 'Connecting camera. Allow camera access if prompted.'; refreshState();
+  const id = $('camera').value;
+  const video_c = id ? { deviceId: { exact: id } } : { facingMode: { ideal: 'environment' } };
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { ...video_c, width: { ideal: 1280 } }, audio: false });
+  } catch (e) {
+    const message = e.name === 'NotAllowedError' ? 'Camera access was blocked. Allow camera access in your browser and try again.'
+      : e.name === 'NotFoundError' ? 'No camera found. Connect a webcam or pair your phone.'
+      : e.name === 'NotReadableError' ? 'Camera unavailable. Close other apps using it and try again.'
+      : !navigator.mediaDevices ? 'Camera access requires HTTPS or localhost. You can also pair a phone.'
+      : 'Could not start the camera. ' + e.message;
+    $('status').textContent = message;
+    starting = false; refreshState();
+    toast(message, 'bad'); return;
+  }
+  video.srcObject = stream; await video.play();
+  await loadCameras();
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/detect');
+  ws.onopen = () => { starting = false; sendConfig(); running = true; refreshState(); pump(); };
+  ws.onmessage = e => {
+    busy = false;
+    const m = JSON.parse(e.data);
+    if (m.error) { $('status').textContent = m.error; return; }
+    draw(m.detections); noteResult(m.detections, m.ms);
+    $('status').textContent = `${m.detections.length} found · ${m.ms} ms`;
+    if (running) pump();
+  };
+  ws.onclose = stop;
+}
+
+function pump() {
+  if (busy || !running || ws.readyState !== 1 || !video.videoWidth) { if (running) setTimeout(pump, 50); return; }
+  const scale = Math.min(1, 960 / video.videoWidth);   // cap upload size
+  grab.width = video.videoWidth * scale; grab.height = video.videoHeight * scale;
+  grab.getContext('2d').drawImage(video, 0, 0, grab.width, grab.height);
+  busy = true;
+  grab.toBlob(b => ws.send(b), 'image/jpeg', 0.8);
+}
+
+function draw(dets, sw = video.videoWidth, sh = video.videoHeight) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = overlay.clientWidth, H = overlay.clientHeight;
+  overlay.width = W * dpr; overlay.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // Map normalised video coords into the letterboxed (object-fit: contain) area.
+  const vr = sw / sh, cr = W / H;
+  const dw = vr > cr ? W : H * vr, dh = vr > cr ? W / vr : H;
+  const ox = (W - dw) / 2, oy = (H - dh) / 2;
+  ctx.font = '500 12.5px Inter, system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  for (const d of dets) {
+    const [x1, y1, x2, y2] = d.box, h = hue(d.class);
+    const x = ox + x1 * dw, y = oy + y1 * dh, w = (x2 - x1) * dw, bh = (y2 - y1) * dh;
+    ctx.lineWidth = 2; ctx.strokeStyle = `hsl(${h} 90% 62%)`; ctx.fillStyle = `hsl(${h} 90% 62% / .12)`;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, bh, 8) : ctx.rect(x, y, w, bh);
+    ctx.fill(); ctx.stroke();
+    const t = `${d.class} ${(d.conf * 100).toFixed(0)}%`, tw = ctx.measureText(t).width + 14, th = 22;
+    const ty = y - th - 4 < 0 ? y + 4 : y - th - 4;           // keep the label on screen
+    ctx.fillStyle = '#050506ee';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, ty, tw, th, 11) : ctx.rect(x, ty, tw, th); ctx.fill();
+    ctx.fillStyle = `hsl(${h} 90% 62%)`; ctx.beginPath(); ctx.arc(x + 10, ty + th / 2, 3.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText(t, x + 19, ty + th / 2 + 1);
+  }
+}
+
+function stop() {
+  running = false; starting = false; busy = false;
+  ws?.close(); stream?.getTracks().forEach(t => t.stop());
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  resetStats(); refreshState(); $('status').textContent = 'Stopped. Press start to run again.';
+}
+
+// The only camera on/off control: the dock button (and the Space key, which does the same thing).
+function toggleCamera() { if (running) stop(); else if (!phoneLive && !starting) start(); }
+$('camToggle').onclick = toggleCamera;
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat || /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement?.tagName)) return;
+  e.preventDefault(); toggleCamera();
+});
+
+// ---- phone camera: this computer acts as a host that phones can connect to --------------------
+const dlg = $('reqDialog');
+const phoneStatus = t => $('phoneStatus').textContent = t;
+
+function showRequest() {
+  if (!reqQueue.length || dlg.open || phoneLive) return;
+  const r = reqQueue[0], more = reqQueue.length - 1;
+  $('reqTitle').textContent = `“${r.from}” wants to connect`;
+  $('reqBody').textContent = 'Its camera will stream to this computer and be checked for the classes you selected.'
+    + (more ? ` ${more} more request${more > 1 ? 's' : ''} waiting.` : '');
+  refreshState();
+  dlg.showModal();
+}
+function answer(accept) {
+  const r = reqQueue.shift();
+  if (dlg.open) dlg.close();
+  if (r && hostWs?.readyState === 1) hostWs.send(JSON.stringify({ type: 'respond', req_id: r.req_id, accept }));
+  if (accept) reqQueue = [];       // the server tells everyone else the computer is busy
+  refreshState();
+  showRequest();
+}
+$('reqYes').onclick = () => answer(true);
+$('reqNo').onclick = () => answer(false);
+dlg.oncancel = e => { e.preventDefault(); answer(false); };
+
+function setPhoneLive(on, who = '') {
+  phoneLive = on; phoneName = on ? who : '';
+  $('remote').hidden = !on; video.hidden = on;
+  $('disconnect').hidden = !on;
+  if (!on) { ctx.clearRect(0, 0, overlay.width, overlay.height); resetStats(); }
+  else phoneStatus(`Receiving from “${who}”`);
+  $('status').textContent = on ? `Phone connected. Receiving camera from “${who}”.` : 'Phone disconnected. Start a camera or connect another phone.';
+  refreshState();
+}
+
+function onHostFrame(buf) {
+  const n = new DataView(buf).getUint32(0);
+  const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, n)));
+  const url = URL.createObjectURL(new Blob([buf.slice(4 + n)], { type: 'image/jpeg' }));
+  const img = $('remote'), prev = img.src;
+  img.onload = () => {
+    if (prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+    if (!phoneLive) return;          // a late frame must not repaint after the phone disconnected
+    draw(head.detections, img.naturalWidth, img.naturalHeight);
+    noteResult(head.detections, head.ms);
+    phoneStatus(`${head.detections.length} found · ${head.ms} ms`);
+    $('status').textContent = `${head.detections.length} found · ${head.ms} ms · Phone camera`;
+  };
+  img.src = url;
+}
+
+function renderQr(text) {
+  const c = $('qr');
+  if (typeof qrcode !== 'function') { c.hidden = true; return; }
+  try {
+    const qr = qrcode(0, 'M'); qr.addData(text); qr.make();
+    const n = qr.getModuleCount(), px = 5, quiet = 2, size = (n + quiet * 2) * px;
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); g.fillStyle = '#0a0a0a';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) g.fillRect((k + quiet) * px, (r + quiet) * px, px, px);
+    c.hidden = false;
+  } catch { c.hidden = true; }
+}
+
+async function copy(text, label) {
+  try { await navigator.clipboard.writeText(text); toast(label + ' copied'); }
+  catch { toast('Could not copy — select it and press Ctrl+C', 'bad'); }
+}
+// Until this computer is registered, the pairing details stay visible as dimmed placeholders.
+function setPairInfo(code, url) {
+  const ready = !!code;
+  $('phoneInfo').dataset.ready = String(ready);
+  $('hostCode').textContent = code || '';
+  $('codeTiles').innerHTML = [...(code || '–'.repeat(6))].map(d => `<span>${d}</span>`).join('');
+  $('phoneUrl').textContent = url || '—';
+  $('copyUrl').disabled = $('copyCode').disabled = !ready;
+  $('phoneHint').hidden = !ready || !!publicUrl || !isLoopback;
+  if (ready && (publicUrl || !isLoopback)) renderQr(url); else $('qr').hidden = true;
+  $('qrPh').hidden = ready;
+  $('qrCol').hidden = ready && $('qr').hidden;
+}
+$('copyCode').onclick = () => copy($('hostCode').textContent, 'Code');
+$('copyUrl').onclick = () => copy($('phoneUrl').textContent, 'Phone link');
+
+function connectHost() {
+  clearTimeout(hostRetry);
+  if (hostWs) return;
+  const name = $('hostName').value.trim();
+  const mine = hostWs = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host
+    + '/ws/host?name=' + encodeURIComponent(name));
+  mine.binaryType = 'arraybuffer';
+  mine.onmessage = e => {
+    if (typeof e.data !== 'string') return onHostFrame(e.data);
+    const m = JSON.parse(e.data);
+    if (m.type === 'registered') {
+      const phoneUrl = (publicUrl || location.origin) + '/phone';
+      setPairInfo(m.code, phoneUrl); phoneStatus('Waiting for a phone…'); sendConfig(); refreshState();
+    } else if (m.type === 'request') {
+      reqQueue.push(m); showRequest();
+    } else if (m.type === 'cancelled') {
+      const i = reqQueue.findIndex(r => r.req_id === m.req_id);
+      if (i === 0 && dlg.open) dlg.close();
+      if (i >= 0) reqQueue.splice(i, 1);
+      refreshState(); showRequest();
+    } else if (m.type === 'session') {
+      if (m.state === 'started') {
+        if (running) stop();
+        setPhoneLive(true, m.phone); toast(`“${m.phone}” connected`);
+      } else {
+        setPhoneLive(false); phoneStatus(`“${m.phone}” disconnected. Waiting for a phone…`);
+        toast(`“${m.phone}” disconnected`); showRequest();
+      }
+    } else if (m.type === 'error') {
+      phoneStatus(m.error); toast(m.error, 'bad');
+    }
+  };
+  mine.onclose = () => {
+    if (hostWs !== mine) return;
+    hostWs = null; reqQueue = []; if (dlg.open) dlg.close();
+    setPhoneLive(false); setPairInfo(null);
+    if ($('accept').checked) { phoneStatus('Reconnecting…'); hostRetry = setTimeout(connectHost, 2000); }
+    else phoneStatus('');
+    refreshState();
+  };
+}
+
+$('accept').onchange = () => {
+  pref('ods.accept', $('accept').checked ? '1' : '0');
+  if ($('accept').checked) connectHost(); else { clearTimeout(hostRetry); hostWs?.close(); }
+};
+function scrollToCard(id) {
+  $(id).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
+}
+$('srcPhone').onclick = () => { if (matchMedia('(max-width:760px)').matches) setSidebar(false); scrollToCard('phoneCard'); };
+$('srcLocal').onclick = () => { if (matchMedia('(max-width:760px)').matches) setSidebar(false); scrollToCard('stage'); $('camToggle').focus({ preventScroll:true }); };
+$('jump').onclick = () => {
+  if (!$('accept').checked) { $('accept').checked = true; $('accept').onchange(); }
+  scrollToCard('phoneCard');
+};
+$('hostName').onchange = () => {
+  pref('ods.hostName', $('hostName').value.trim());
+  $('whoName').textContent = $('hostName').value.trim() || 'Computer'; $('avatar').textContent = ($('whoName').textContent[0] || 'C').toUpperCase();
+  if (hostWs?.readyState === 1) hostWs.send(JSON.stringify({ type: 'rename', name: $('hostName').value.trim() }));
+};
+$('disconnect').onclick = () => hostWs?.send(JSON.stringify({ type: 'end' }));
+
+$('theme').onclick = () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  const apply = () => { document.documentElement.dataset.theme = next; };
+  document.startViewTransition ? document.startViewTransition(apply) : apply();   // cross-fade between themes
+  pref('ods.theme', next);
+};
+// Soft ripple from the press point on the main controls.
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.pillbtn,.camtoggle,.camBtn,.sugg,.item,.opt');
+  if (!b || b.disabled) return;
+  const r = b.getBoundingClientRect(), size = Math.max(r.width, r.height) * 2;
+  const w = document.createElement('span'); w.className = 'ripple';
+  w.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
+  b.append(w); w.addEventListener('animationend', () => w.remove());
+});
+function setSidebar(open) {
+  $('app').classList.toggle('collapsed', !open); $('expand').hidden = open; pref('ods.side', open ? '1' : '0');
+}
+$('collapse').onclick = () => setSidebar(false);
+$('expand').onclick = () => setSidebar(true);
+if (pref('ods.side') === '0' || matchMedia('(max-width:760px)').matches) {
+  $('app').classList.add('collapsed'); $('expand').hidden = false;
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && matchMedia('(max-width:760px)').matches && !$('app').classList.contains('collapsed')) { setSidebar(false); $('expand').focus(); }
+});
+document.querySelector('.main').addEventListener('click', e => {
+  if (matchMedia('(max-width:760px)').matches && !$('app').classList.contains('collapsed') && !e.target.closest('#expand')) setSidebar(false);
+});
+
+$('hostName').value = pref('ods.hostName') || (navigator.userAgent.includes('Windows') ? 'Windows PC'
+  : navigator.userAgent.includes('Mac') ? 'Mac' : 'Computer');
+$('whoName').textContent = $('hostName').value; $('avatar').textContent = ($('hostName').value[0] || 'C').toUpperCase();
+
+// With `ods --share`, phones and this computer are matched by network address, which only works when both
+// come in through the public link - so a page opened on localhost hops over to it (add ?local to stay).
+let publicUrl = '';
+const isLoopback = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+loadClasses().catch(() => {
+  $('selectionCount').textContent = 'Object classes unavailable';
+  $('status').textContent = 'Could not reach the server. Reload the page to try again.';
+  toast('Could not load object classes. Check your ODS server and reload.', 'bad');
+});
+loadCameras().catch(() => renderCamMenu());
+setPairInfo(null);
+refreshState();
+requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('no-anim')));
+(async () => {
+  try { publicUrl = (await (await fetch('/api/info')).json()).public_url || ''; } catch {}
+  if (publicUrl && isLoopback && location.origin !== publicUrl && !location.search.includes('local')) {
+    location.replace(publicUrl + location.pathname + location.search);
+    return;
+  }
+  if (pref('ods.accept') === '1') { $('accept').checked = true; connectHost(); }
+})();
+</script>
+</body>
+</html>

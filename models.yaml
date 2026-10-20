@@ -1,0 +1,25 @@
+# Model registry: every selectable class belongs to exactly one model.
+# Class names must match the model's own class names (model.names), or be
+# mapped with the {ui_name: model_name} form.
+# A model whose weights file is missing is shown as "unavailable" in the UI
+# instead of crashing the server.
+
+default_conf: 0.35        # confidence threshold used when the client sends none
+default_imgsz: 640
+
+models:
+  coco:
+    # Ultralytics downloads this automatically on first use.
+    # Larger = more accurate, slower: yolo11n < s < m < l < x
+    weights: yolo11m.pt
+    classes: [person, bicycle, car, motorcycle, bus, truck, airplane, bird, boat, cat, dog]
+
+  drone:
+    # COCO has NO drone class. You must supply a model trained on a drone
+    # dataset (see README, "Drone detection"). Put the file at this path.
+    weights: weights/drone.pt
+    # {ui_name: class name inside the model}. Matching is case-insensitive.
+    # Change the right-hand side if your model calls it e.g. UAV or Drone.
+    classes: {drone: drone}
+    conf: 0.30            # optional per-model default
+    imgsz: 960            # drones are small; higher resolution helps recall
